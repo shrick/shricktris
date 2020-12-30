@@ -1,14 +1,14 @@
 # figure.py
 
 
-from brick import RandomBrick, BRICK_DIMENSION, ROTATION_OFFSET
+from brick import RandomBrick
 
 
 class RandomFigure:
     def __init__(self, game_field):
         self._game_field = game_field
         self._brick = RandomBrick()
-        self._x = int((self._game_field.get_columns() - BRICK_DIMENSION) / 2)
+        self._x = int((self._game_field.get_columns() - self._brick.DIMENSION) / 2)
         self._y = 0
         self._freezed = False
     
@@ -19,7 +19,7 @@ class RandomFigure:
         return self._brick.get_colorindex()
 
     def get_xy_coordinates(self):
-        return ((int(self._x + (p %  BRICK_DIMENSION)), int(self._y + (p / BRICK_DIMENSION)))
+        return ((int(self._x + (p %  self._brick.DIMENSION)), int(self._y + (p / self._brick.DIMENSION)))
             for p in self._brick.get_points())
     
     def _step(self, dx=0, dy=0):
@@ -50,9 +50,9 @@ class RandomFigure:
             pass
 
     def rotate(self):
-        if self._brick.rotate(ROTATION_OFFSET):
+        if self._brick.rotate_ahead():
             if self._game_field.collides(self):
-                self._brick.rotate(-ROTATION_OFFSET)
+                self._brick.rotate_aback()
 
     def _freeze(self):
         self._game_field.freeze_figure(self)

@@ -4,7 +4,7 @@ import pygame
 from colors import COLORS
 
 # simple wrapper for rect/color pairs
-class ColoredRectangle:
+class _ColoredRectangle:
     def __init__(self, rectangle, colorindex):
         self.rectangle = rectangle
         self.colorindex = colorindex
@@ -20,7 +20,7 @@ class GameField:
         y_offset = int((screen.get_height() / length - rows) / 2 * length)
 
         self._field = [[
-            ColoredRectangle(pygame.Rect(x_offset + length * x, y_offset + length * y, length, length), 0)
+            _ColoredRectangle(pygame.Rect(x_offset + length * x, y_offset + length * y, length, length), 0)
             for x in range(columns)]
             for y in range(rows)]
 
