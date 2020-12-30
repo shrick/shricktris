@@ -59,6 +59,7 @@ class Game:
         self._stepover = START_GAME_STEPOVER
         self._nostep = self._stepover
         self._looping = True
+        self._started = False
         self._stopped = False
         self._paused = True
 
@@ -83,6 +84,7 @@ class Game:
             if self._paused:
                 print("Press PAUSE key continue.")
             else:
+                self._started = True
                 print("Press PAUSE key to pause again.")
         
         if self._control.quit():
@@ -129,13 +131,14 @@ class Game:
         self._screen.blit(self._background, (0, 0))
         self._field.draw_grid()
 
-        if self._stopped:
-            # hack in some flickering
-            self._nostep =  (self._nostep + 1) % 3
-            if not self._nostep:
+        if self._started:
+            if not self._stopped:
                 self._field.draw_figure(self._figure)
-        else:
-            self._field.draw_figure(self._figure)
+            else:
+                # hack in some flickering
+                self._nostep =  (self._nostep + 1) % 3
+                if not self._nostep:
+                    self._field.draw_figure(self._figure)
         
         pygame.display.update()
 
