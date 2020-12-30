@@ -11,7 +11,6 @@ Simple Tetris clone in Python with Pygame. Inspired by an [Morpheus Tutorial](ht
 
 - [ ] Support randimized tetriminos bags
 - [ ] More fine grained speed/movement control
-- [ ] Draw text in window (score, pause etc)
 - [ ] Allow restart
 - [ ] Allow configuration (grid size etc)
 - [ ] Scale game field with window size

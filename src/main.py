@@ -23,5 +23,4 @@ SYNOPSIS = """Keyboard keys to control game:
 
 if __name__ == "__main__":
     print(SYNOPSIS)
-    game = Game()
-    game.loop()
+    Game().loop()
