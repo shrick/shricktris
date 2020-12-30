@@ -1,14 +1,29 @@
+#!/usr/bin/env python3
+
 import pygame
 import random
 
+SYNOPSIS = """Keyboard keys to control game:
+  Pause         pause/continue
+  q             quit
+  +             speed up
+  -             speed down
+  
+  Cursor left   move left
+         right  move right
+         down   move down
+         up     rotate
+  Space         fall down
+"""
 
 GAME_TITLE = "Shricktris"
 MIN_FPS = 1
 MAX_FPS = 24
-START_FPS = 3
+START_FPS = 12
+START_GAME_STEPOVER = 8
 SCREEN_RESOLUTION = (600, 800)
-COLUMNS = 16
-ROWS = 30
+GRID_COLUMNS = 16
+GRID_ROWS = 30
 
 WHITE = (255, 255, 255)
 GRAY = (128, 128, 128)
@@ -34,10 +49,17 @@ COLORS = [
 
 
 class Control:
-    _to_quit = False
-    _keystates = {}
+    def __init__(self, fps):
+        self._clock = pygame.time.Clock()
+        self._to_quit = False
+        self._keystates = {}
 
-    def process_events(self):  
+        self._fps = 0
+        self.adjust_fps(fps)
+        
+    def process_events(self):
+        self._clock.tick(self._fps)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._to_quit = True
@@ -45,8 +67,14 @@ class Control:
                 self._keystates[event.key] = True
             elif event.type == pygame.KEYUP:
                 self._keystates[event.key] = False
-        pygame.event.pump()
+
+    def adjust_fps(self, dfps):
+        self._fps = max(min(self._fps + dfps, MAX_FPS), MIN_FPS)
+        print("[DEBUG] fps = " + str(self._fps))
     
+    def get_fps(self):
+        return self._fps
+        
     def _is_pressed(self, keys):
         return all(k in self._keystates and self._keystates[k] for k in keys)
 
@@ -56,13 +84,13 @@ class Control:
     def pause(self):
         return self._is_pressed([pygame.K_PAUSE])
 
-    def move_left(self):
+    def step_left(self):
         return self._is_pressed([pygame.K_LEFT])
 
-    def move_right(self):
+    def step_right(self):
         return self._is_pressed([pygame.K_RIGHT])
 
-    def fast_down(self):
+    def step_down(self):
         return self._is_pressed([pygame.K_DOWN])
 
     def fall_down(self):
@@ -71,10 +99,10 @@ class Control:
     def rotate(self):
         return self._is_pressed([pygame.K_UP])
 
-    def speedup(self):
+    def speed_up(self):
         return self._is_pressed([pygame.K_PLUS])
 
-    def speeddown(self):
+    def speed_down(self):
         return self._is_pressed([pygame.K_MINUS])
 
 
@@ -86,22 +114,23 @@ FIGURES = [
     # I (cyan)
     [ "I", ((4, 5, 6, 7), (1, 5, 9, 13)) ],
     # L (orange)
-    [ "L", ((1, 5, 9, 10), (4, 5, 6, 8), (1, 2, 6, 10), (2, 4, 5, 6)) ],
+    [ "L", ((2, 4, 5, 6), (1, 5, 9, 10), (4, 5, 6, 8), (1, 2, 6, 10)) ],
     # J (blue)
     [ "J", ((5, 9, 10, 11), (1, 2, 5, 9), (4, 5, 6, 10), (2, 6, 9, 10)) ],
     # T (purple)
-    [ "T", ((5, 6, 7, 10), (2, 5, 6, 10), (2, 5, 6, 7), (1, 5, 6, 9)) ],
+    [ "T", ((2, 5, 6, 7), (2, 6, 7, 10), (5, 6, 7, 10), (2, 5, 6, 10)) ],
     # S (green)
     [ "S", ((6, 7, 9, 10), (1, 5, 6, 10)) ],
     # Z (red)
     [ "Z", ((5, 6, 10, 11), (2, 5, 6, 9)) ],
 ]
+ROTATION_OFFSET = -1
+
 
 class RandomFigure:
     def __init__(self, game_field):
         self._game_field = game_field
         self._type = random.randint(0, len(FIGURES) - 1)
-        self._name = FIGURES[self._type][0]
         self._variants = FIGURES[self._type][1]
         self._variant = 0
         self._x = int((self._game_field.get_columns() - FIGURE_DIMENSION) / 2)
@@ -109,60 +138,59 @@ class RandomFigure:
         self._freezed = False
     
     def get_name(self):
-        return self._name
+        return FIGURES[self._type][0]
 
     def get_colorindex(self):
-        return self._type + 1
-
-    def get_colorrgb(self):
-        return COLORS[self.get_colorindex()]
-
-    def get_points(self):
-        return self._variants[self._variant]
+        return (self._type % (len(COLORS) - 1)) + 1
 
     def get_xy_coordinates(self):
         return ((int(self._x + (p %  FIGURE_DIMENSION)), int(self._y + (p / FIGURE_DIMENSION)))
-            for p in figure.get_points())
+            for p in self._variants[self._variant])
     
-    def step_down(self):
-        self._y += 1
-        if self._game_field.collides(self):
-            self._y -= 1
-            self.freeze()
-    
-    def _move(self, dx=0, dy=0):
+    def _step(self, dx=0, dy=0):
+        """return if step was actually done (no collosion detected)"""
+
+        x, y = self._x, self._y
         self._x += dx
         self._y += dy
 
         if self._game_field.collides(self):
-            self._x -= dx
-            self._y -= dy
+            self._x, self._y = x, y
+            return False
+        
+        return True
 
-    def move_left(self):
-        self._move(dx=-1)
+    def step_down(self):
+        if not self._step(dy=+1):
+            self._freeze()
+    
+    def step_left(self):
+        self._step(dx=-1)
 
-    def move_right(self):
-        self._move(dx=+1)
-
-    def fast_down(self):
-        self._move(dy=+1)
+    def step_right(self):
+        self._step(dx=+1)
 
     def fall_down(self):
-        while not self.is_freezed():
-            self.step_down()
+        while self._step(dy=+1):
+            pass
 
     def _switch_variant(self, direction):
-        self._variant = (self._variant + direction) % len(self._variants)
+        """returns if actually rotated"""
+
+        if len(self._variants) > 1:
+            self._variant = (self._variant + direction) % len(self._variants)
+            return True
+        
+        return False
 
     def rotate(self):
-        if len(self._variants) > 1:
-            self._switch_variant(+1)
+        if self._switch_variant(ROTATION_OFFSET):
             if self._game_field.collides(self):
-                self._switch_variant(-1)
+                self._switch_variant(-ROTATION_OFFSET)
 
-    def freeze(self):
-        self._game_field.freeze_figure(figure)
-        figure._freezed = True
+    def _freeze(self):
+        self._game_field.freeze_figure(self)
+        self._freezed = True
 
     def is_freezed(self):
         return self._freezed
@@ -190,12 +218,12 @@ class GameField:
             for y in range(self._rows):
                 cell = self._field[y][x]
                 rect = cell[0]
-                color = cell[1]
-                pygame.draw.rect(self._screen, COLORS[color], rect, 0 if color else 1)
+                colorindex = cell[1]
+                pygame.draw.rect(self._screen, COLORS[colorindex], rect, 0 if colorindex else 1)
 
     def draw_figure(self, figure):
         for x, y in figure.get_xy_coordinates():
-            pygame.draw.rect(self._screen, figure.get_colorrgb(), self._field[y][x][0], 0)
+            pygame.draw.rect(self._screen, COLORS[figure.get_colorindex()], self._field[y][x][0], 0)
 
     def collides(self, figure):
         for x, y in figure.get_xy_coordinates():
@@ -230,92 +258,151 @@ class GameField:
         
         return lines
 
+
+class Score:
+    def __init__(self):
+        self.lines = []
+        self.last_bonus = 0
+        self.score = 0
+    
+    def add_lines(self, lines):
+        self.lines.append(lines)
+        self.last_bonus = lines ** 2
+        self.score += self.last_bonus
+
+    def print_current_score(self):
+        lines = self.lines[-1] if self.lines else 0
+        print("Score: {} (+{} point{} for {} line{})".format(
+            self.score, 
+            self.last_bonus, "" if self.last_bonus == 1 else "s",
+            lines, "" if  lines == 1 else "s"))
+    
+    def print_final_score(self):
+        lines = sum(self.lines)
+        print("Final score: {} ({} resolved line{})".format(
+            self.score, 
+            lines, "" if lines == 1 else "s"))
         
 
-if __name__ == "__main__":
-    pygame.init()
-    clock = pygame.time.Clock()
-    fps = START_FPS
-    screen = pygame.display.set_mode(SCREEN_RESOLUTION)
-    pygame.display.set_caption(GAME_TITLE)
+class Game:
+    def __init__(self):
+        # init pygame
+        pygame.init()
+        pygame.display.set_caption(GAME_TITLE)
+        self._screen = pygame.display.set_mode(SCREEN_RESOLUTION)
+        self._background = pygame.Surface(self._screen.get_size()).convert()
+        self._background.fill(WHITE)
 
-    background = pygame.Surface(screen.get_size())
-    background = background.convert()
-    background.fill(WHITE)
+        # init game components
+        self._field = GameField(self._screen, GRID_COLUMNS, GRID_ROWS, 20)
+        self._figure = RandomFigure(self._field)
+        self._next_figure = RandomFigure(self._field)
+        self._score = Score()
+        self._control = Control(START_FPS)
 
-    field = GameField(screen, COLUMNS, ROWS, 20)
-    figure = RandomFigure(field)
-    next_figure = RandomFigure(field)
-    resolved_lines = 0
-    score = 0
+        # init speed and game state
+        self._stepover = START_GAME_STEPOVER
+        self._nostep = self._stepover
+        self._looping = True
+        self._stopped = False
+        self._paused = True
+        print("Press PAUSE key to start!")
 
-    control = Control()
-    game_stop = False
-    game_running = True
-    game_pause = True
-    print("Press PAUSE key to pause/unpause!")
+    def _adjust_speed(self, delta):
+        old_stepover = self._stepover
+        self._stepover = max(self._stepover + delta, 1)
 
-    while game_running:
-        clock.tick(fps)
-        control.process_events()
+        if self._stepover != old_stepover:
+            print("[DEBUG] game_stepover = " + str(self._stepover))
+
+    def _check_states(self):
+        # game speed
+        if self._control.speed_up():
+            self._adjust_speed(-1)
         
-        # toggle game speed
-        if control.speedup():
-            fps = min(fps + 1, MAX_FPS)
-            print("fps=" + str(fps))
-        if control.speeddown():
-            fps = max(fps - 1, MIN_FPS)
-            print("fps=" + str(fps))
+        if self._control.speed_down():
+            self._adjust_speed(+1)
         
-        # check game state
-        if control.quit():
-            game_running = False
-            break
-        if control.pause():
-            game_pause = not game_pause
+        # game state
+        if self._control.pause():
+            self._paused = not self._paused
+            if self._paused:
+                print("Press PAUSE key continue.")
+            else:
+                print("Press PAUSE key to pause again.")
         
-        if not (game_pause or game_stop):
-            # move figure
-            if control.move_left():
-                figure.move_left()
-            if control.move_right():
-                figure.move_right()
-            if control.fast_down():
-                figure.fast_down()
-            if control.fall_down():
-                figure.fall_down()
-            if control.rotate():
-                figure.rotate()
+        if self._control.quit():
+            print("Quitting...")
+            self._looping = False
 
-            # step game
-            figure.step_down()
-            
-            # resolve lines
-            lines = field.resolve_lines()
-            if lines:
-                resolved_lines += lines
-                bonus = lines ** 2
-                score += bonus
-                print("Score: {} (+{} point{} for {} line{})".format(
-                    score, 
-                    bonus, "" if bonus == 1 else "s",
-                    lines, "" if resolved_lines == 1 else "s"))
-            
-            # spawn new figure
-            if figure.is_freezed():
-                figure = next_figure
-                if field.collides(figure):
-                    print("Game finished.")
-                    game_stop = True
-                    fps = MAX_FPS # increase key processing
-                else:
-                    next_figure = RandomFigure(field)
-                    print("Next figure: " + next_figure.get_name())
+    def _move_figure(self):
+        if self._control.step_left():
+            self._figure.step_left()
+        if self._control.step_right():
+            self._figure.step_right()
+        if self._control.step_down():
+            self._figure.step_down()
+        if self._control.fall_down():
+            self._figure.fall_down()
+        if self._control.rotate():
+            self._figure.rotate()
         
-        # draw
-        screen.blit(background, (0, 0))
-        field.draw_grid()
-        field.draw_figure(figure)
+    def _advance(self):
+        # force step down
+        self._figure.step_down()
+        
+        # resolve lines
+        lines = self._field.resolve_lines()
+        if lines:
+            self._score.add_lines(lines)
+            self._score.print_current_score()
+            # increase game speed
+            self._stepover = max(self._stepover - 1, 1)
+            print("[DEBUG] game_stepover = " + str(self._stepover))
+        
+        # spawn new figure
+        if self._figure.is_freezed():
+            self._figure = self._next_figure
+            if self._field.collides(self._figure):
+                self._stopped = True
+                print("Game finished.")
+                self._score.print_final_score()
+            else:
+                self._next_figure = RandomFigure(self._field)
+                print("Next figure: " + self._next_figure.get_name())
+
+    def _draw(self):
+        self._screen.blit(self._background, (0, 0))
+        self._field.draw_grid()
+
+        if self._stopped:
+            self._nostep =  (self._nostep + 1) % 3
+            if not self._nostep:
+                self._field.draw_figure(self._figure)
+        else:
+            self._field.draw_figure(self._figure)
+        
         pygame.display.update()
 
-print("Final score: {} ({} resolved line{})".format(score, resolved_lines, "" if resolved_lines == 1 else "s"))
+    def loop(self):
+        while self._looping:
+            self._control.process_events()
+            self._check_states()
+            
+            if not self._paused and not self._stopped:
+                self._move_figure()
+
+                self._nostep =  (self._nostep + 1) % self._stepover
+                if not self._nostep:
+                    self._advance()
+            
+            self._draw()
+        
+        if not self._stopped:
+            self._score.print_final_score()       
+
+
+if __name__ == "__main__":
+    print(SYNOPSIS)
+    game = Game()
+    game.loop()
