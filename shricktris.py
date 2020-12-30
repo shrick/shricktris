@@ -292,6 +292,7 @@ class Score:
 class Game:
     def __init__(self):
         # init pygame components
+        pygame.init()
         pygame.display.set_caption(GAME_TITLE)
         self._screen = pygame.display.set_mode(SCREEN_RESOLUTION)
         self._background = pygame.Surface(self._screen.get_size()).convert()
@@ -310,7 +311,6 @@ class Game:
         self._looping = True
         self._stopped = False
         self._paused = True
-        print("Press PAUSE key to start!")
 
     def _adjust_speed(self, delta):
         old_stepover = self._stepover
@@ -380,6 +380,7 @@ class Game:
         self._field.draw_grid()
 
         if self._stopped:
+            # hack in some flickering
             self._nostep =  (self._nostep + 1) % 3
             if not self._nostep:
                 self._field.draw_figure(self._figure)
@@ -389,6 +390,8 @@ class Game:
         pygame.display.update()
 
     def loop(self):
+        print("Press PAUSE key to start!")
+        
         while self._looping:
             self._control.process_events()
             self._check_states()
@@ -405,13 +408,10 @@ class Game:
         if not self._stopped:
             self._score.print_final_score()
         
-
-
+        pygame.quit()
+        
 
 if __name__ == "__main__":
     print(SYNOPSIS)
-
-    pygame.init()
     game = Game()
     game.loop()
-    pygame.quit()
