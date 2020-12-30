@@ -5,7 +5,7 @@ from field import GameField
 from figure import RandomFigure
 from control import Control
 from score import Score
-from colors import COLORS, WHITE, GRAY
+import colors
 
 
 GAME_TITLE = "Shricktris"
@@ -23,7 +23,9 @@ class Game:
         pygame.display.set_caption(GAME_TITLE)
         self._screen = pygame.display.set_mode(SCREEN_RESOLUTION)
         self._background = pygame.Surface(self._screen.get_size()).convert()
-        self._background.fill(WHITE)
+        self._background.fill(colors.WHITE)
+        self._font = pygame.font.SysFont(None, 24)
+        self._set_message("Press PAUSE key to start!", colors.GREEN)
 
         # init game components
         self._field = GameField(self._screen, GRID_COLUMNS, GRID_ROWS, 20)
@@ -39,6 +41,22 @@ class Game:
         self._started = False
         self._stopped = False
         self._paused = True
+
+    def _set_message(self, text=None, color=None):
+        if text is not None:
+            self._text_image = self._font.render(text, True, colors.GRAY if color is None else color)
+        else:
+            self._text_image = None
+
+    def _display_score(self):
+        if self._stopped:
+            score_text = self._score.get_final_score()
+            self._set_message(score_text + "   Game finished. Press Q to quit!", colors.RED)
+        else:
+            score_text = self._score.get_current_score()
+            self._set_message(score_text, colors.CYAN)
+
+        print(score_text)
 
     def _adjust_speed(self, delta):
         old_stepover = self._stepover
@@ -56,13 +74,13 @@ class Game:
             self._adjust_speed(+1)
         
         # game state
-        if self._control.pause():
+        if self._control.pause() and not self._stopped:
             self._paused = not self._paused
             if self._paused:
-                print("Press PAUSE key to continue.")
+                self._set_message("Press PAUSE key to continue.", colors.BLUE)
             else:
                 self._started = True
-                print("Press PAUSE key to pause again.")
+                self._set_message()
         
         if self._control.quit():
             print("Quitting...")
@@ -88,7 +106,7 @@ class Game:
         lines = self._field.resolve_lines()
         if lines:
             self._score.add_lines(lines)
-            self._score.print_current_score()
+            self._display_score()
             # increase game speed
             self._stepover = max(self._stepover - 1, 1)
             print("[DEBUG] game_stepover = " + str(self._stepover))
@@ -98,8 +116,7 @@ class Game:
             self._figure = self._next_figure
             if self._field.collides(self._figure):
                 self._stopped = True
-                print("Game finished.")
-                self._score.print_final_score()
+                self._display_score()
             else:
                 self._next_figure = RandomFigure(self._field)
                 print("Next figure: " + self._next_figure.get_name())
@@ -115,13 +132,16 @@ class Game:
                 # hack in some flickering
                 self._nostep =  (self._nostep + 1) % 3
                 if not self._nostep:
-                    self._field.draw_figure(self._figure)
+                    self._field.draw_figure(self._figure, colors.GRAY)
+        
+        if self._text_image is not None:
+            rect = self._text_image.get_rect()
+            rect.topleft = (20, 20)
+            self._screen.blit(self._text_image, rect)
         
         pygame.display.update()
 
-    def loop(self):
-        print("Press PAUSE key to start!")
-        
+    def loop(self):        
         while self._looping:
             self._control.process_events()
             self._check_states()
@@ -136,6 +156,6 @@ class Game:
             self._draw()
         
         if not self._stopped:
-            self._score.print_final_score()
+            print(self._score.get_final_score())
         
         pygame.quit()

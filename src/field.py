@@ -35,9 +35,10 @@ class GameField:
                 border_only = 0 if cell.colorindex else 1
                 pygame.draw.rect(self._screen, color, cell.rectangle, border_only)
 
-    def draw_figure(self, figure):
+    def draw_figure(self, figure, alternate_color=None):
+        color = alternate_color if alternate_color is not None else COLORS[figure.get_colorindex()]
         for x, y in figure.get_xy_coordinates():
-            pygame.draw.rect(self._screen, COLORS[figure.get_colorindex()], self._field[y][x].rectangle, 0)
+            pygame.draw.rect(self._screen, color, self._field[y][x].rectangle, 0)
 
     def collides(self, figure):
         for x, y in figure.get_xy_coordinates():

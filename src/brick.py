@@ -5,15 +5,13 @@ import random
 from colors import COLORS
 
 
-
-
 class RandomBrick:
     DIMENSION = 4
 
     # Tetriminos
     _BRICKS = [
         # O (yellow)
-        [ "O", ((5, 6, 9, 10),) ],
+        [ "O", ((1, 2, 5, 6),) ],
         # I (cyan)
         [ "I", ((4, 5, 6, 7), (1, 5, 9, 13)) ],
         # L (orange)
