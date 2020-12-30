@@ -2,8 +2,10 @@
 
 import pygame
 import random
+import collections
 
 SYNOPSIS = """Keyboard keys to control game:
+  
   Pause         pause/continue
   q             quit
   +             speed up
@@ -71,9 +73,6 @@ class Control:
     def adjust_fps(self, dfps):
         self._fps = max(min(self._fps + dfps, MAX_FPS), MIN_FPS)
         print("[DEBUG] fps = " + str(self._fps))
-    
-    def get_fps(self):
-        return self._fps
         
     def _is_pressed(self, keys):
         return all(k in self._keystates and self._keystates[k] for k in keys)
@@ -195,7 +194,13 @@ class RandomFigure:
     def is_freezed(self):
         return self._freezed
     
-    
+
+# simple wrapper for rect/color pairs
+class ColoredRectangle:
+    def __init__(self, rectangle, colorindex):
+        self.rectangle = rectangle
+        self.colorindex = colorindex
+
 class GameField:
     def __init__(self, screen, columns, rows, length):
         self._screen = screen
@@ -206,7 +211,7 @@ class GameField:
         y_offset = int((screen.get_height() / length - rows) / 2 * length)
 
         self._field = [[
-            [pygame.Rect(x_offset + length * x, y_offset + length * y, length, length), 0]
+            ColoredRectangle(pygame.Rect(x_offset + length * x, y_offset + length * y, length, length), 0)
             for x in range(columns)]
             for y in range(rows)]
 
@@ -217,13 +222,13 @@ class GameField:
         for x in range(self._columns):
             for y in range(self._rows):
                 cell = self._field[y][x]
-                rect = cell[0]
-                colorindex = cell[1]
-                pygame.draw.rect(self._screen, COLORS[colorindex], rect, 0 if colorindex else 1)
+                color = COLORS[cell.colorindex]
+                border_only = 0 if cell.colorindex else 1
+                pygame.draw.rect(self._screen, color, cell.rectangle, border_only)
 
     def draw_figure(self, figure):
         for x, y in figure.get_xy_coordinates():
-            pygame.draw.rect(self._screen, COLORS[figure.get_colorindex()], self._field[y][x][0], 0)
+            pygame.draw.rect(self._screen, COLORS[figure.get_colorindex()], self._field[y][x].rectangle, 0)
 
     def collides(self, figure):
         for x, y in figure.get_xy_coordinates():
@@ -231,7 +236,7 @@ class GameField:
             if not (0 <= x < self._columns and 0 <= y < self._rows):
                 return True
             # check freezed figures
-            if self._field[y][x][1] != 0:
+            if self._field[y][x].colorindex != 0:
                 return True
 
         return False
@@ -239,20 +244,20 @@ class GameField:
     def freeze_figure(self, figure):
         colorindex = figure.get_colorindex()
         for x, y in figure.get_xy_coordinates():
-            self._field[y][x][1] = colorindex
+            self._field[y][x].colorindex = colorindex
     
     def resolve_lines(self):
         lines = 0
         for y1 in range(self._rows):
-            if all(self._field[y1][x][1] != 0 for x in range(self._columns)):
+            if all(self._field[y1][x].colorindex != 0 for x in range(self._columns)):
                 # copy down
                 for y2 in range(y1, 1, -1):
                     for x in range(self._columns):
-                        self._field[y2][x][1] = self._field[y2 - 1][x][1]
+                        self._field[y2][x].colorindex = self._field[y2 - 1][x].colorindex
                 
                 # empty first line
                 for x in range(self._columns):
-                    self._field[0][x][1] = 0
+                    self._field[0][x].colorindex = 0
 
                 lines += 1
         
@@ -286,8 +291,7 @@ class Score:
 
 class Game:
     def __init__(self):
-        # init pygame
-        pygame.init()
+        # init pygame components
         pygame.display.set_caption(GAME_TITLE)
         self._screen = pygame.display.set_mode(SCREEN_RESOLUTION)
         self._background = pygame.Surface(self._screen.get_size()).convert()
@@ -399,10 +403,15 @@ class Game:
             self._draw()
         
         if not self._stopped:
-            self._score.print_final_score()       
+            self._score.print_final_score()
+        
+
 
 
 if __name__ == "__main__":
     print(SYNOPSIS)
+
+    pygame.init()
     game = Game()
     game.loop()
+    pygame.quit()
