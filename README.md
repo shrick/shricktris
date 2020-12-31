@@ -1,6 +1,6 @@
 # shricktris
 
-Simple Tetris clone in Python with Pygame. Inspired by an [Morpheus Tutorial](https://youtu.be/SfPWCKTHzE4).
+Simple Tetris clone in Python with Pygame. Inspired by a [Morpheus Tutorial](https://youtu.be/SfPWCKTHzE4).
 
 ## Requirements
 
