@@ -1,13 +1,30 @@
 # figure.py
 
 
-from brick import RandomBrick
+import random
+from brick import Brick
 
 
-class RandomFigure:
+class FigureFactory:
     def __init__(self, game_field):
         self._game_field = game_field
-        self._brick = RandomBrick()
+        self._new_bag()
+
+    def _new_bag(self):
+        brick_count = len(Brick.BRICKS)
+        self._bag = [ Figure(self._game_field, Brick(t)) for t in random.sample(range(brick_count), brick_count)]
+    
+    def get_new(self):
+        if not self._bag:
+            self._new_bag()
+        
+        return self._bag.pop()
+
+
+class Figure:
+    def __init__(self, game_field, brick):
+        self._game_field = game_field
+        self._brick = brick
         self._x = int((self._game_field.get_columns() - self._brick.DIMENSION) / 2)
         self._y = 0
         self._freezed = False

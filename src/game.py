@@ -2,7 +2,7 @@
 
 import pygame
 from field import GameField
-from figure import RandomFigure
+from figure import FigureFactory
 from control import Control
 from score import Score
 import colors
@@ -29,8 +29,9 @@ class Game:
 
         # init game components
         self._field = GameField(self._screen, GRID_COLUMNS, GRID_ROWS, 20)
-        self._figure = RandomFigure(self._field)
-        self._next_figure = RandomFigure(self._field)
+        self._figure_factory = FigureFactory(self._field)
+        self._figure = self._figure_factory.get_new()
+        self._next_figure = self._figure_factory.get_new()
         self._score = Score()
         self._control = Control(START_FPS)
 
@@ -97,7 +98,7 @@ class Game:
             self._figure.fall_down()
         if self._control.rotate():
             self._figure.rotate()
-        
+    
     def _advance(self):
         # force step down
         self._figure.step_down()
@@ -118,7 +119,7 @@ class Game:
                 self._stopped = True
                 self._display_score()
             else:
-                self._next_figure = RandomFigure(self._field)
+                self._next_figure = self._figure_factory.get_new()
                 print("Next figure: " + self._next_figure.get_name())
 
     def _draw(self):

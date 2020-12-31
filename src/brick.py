@@ -1,15 +1,14 @@
 # brick.py
 
 
-import random
 from colors import COLORS
 
 
-class RandomBrick:
+class Brick:
     DIMENSION = 4
 
     # Tetriminos
-    _BRICKS = [
+    BRICKS = [
         # O (yellow)
         [ "O", ((1, 2, 5, 6),) ],
         # I (cyan)
@@ -28,13 +27,13 @@ class RandomBrick:
 
     _DEFAULT_ROTATION_DIRECTION = -1
 
-    def __init__(self):
-        self._type = random.randint(0, len(self._BRICKS) - 1)
-        self._variants = self._BRICKS[self._type][1]
+    def __init__(self, btype):
+        self._type = btype
+        self._variants = self.BRICKS[self._type][1]
         self._variant = 0
 
     def get_name(self):
-        return self._BRICKS[self._type][0]
+        return self.BRICKS[self._type][0]
 
     def get_dimension():
         return self._BRICK_DIMENSION
