@@ -5,20 +5,16 @@ import random
 from brick import Brick
 
 
-class FigureFactory:
-    def __init__(self, game_field):
-        self._game_field = game_field
-        self._new_bag()
+def generate_randomized_figures(game_field):
+    """Generates figures using randomized bags"""
 
-    def _new_bag(self):
-        brick_count = len(Brick.BRICKS)
-        self._bag = [ Figure(self._game_field, Brick(t)) for t in random.sample(range(brick_count), brick_count)]
-    
-    def get_new(self):
-        if not self._bag:
-            self._new_bag()
-        
-        return self._bag.pop()
+    brick_count = len(Brick.BRICKS)
+    bag = []
+
+    while True:
+        if not bag:
+            bag = random.sample(range(brick_count), brick_count)
+        yield Figure(game_field, Brick(bag.pop()))
 
 
 class Figure:
