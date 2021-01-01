@@ -39,18 +39,16 @@ class Game:
         self._stepover = START_GAME_STEPOVER
         self._nostep = self._stepover
         self._looping = True
-        self._started = False
-        self._stopped = False
-        self._paused = True
+        self._was_started = False
+        self._has_stopped = False
+        self._is_paused = True
 
-    def _set_message(self, text=None, color=None):
-        if text is not None:
-            self._text_image = self._font.render(text, True, colors.GRAY if color is None else color)
-        else:
-            self._text_image = None
+    def _set_message(self, text, color):
+        self._text_image = self._font.render(text, True, colors.GRAY if color is None else color)
+        
 
     def _display_score(self):
-        if self._stopped:
+        if self._has_stopped:
             score_text = self._score.get_final_score()
             self._set_message(score_text + "   Game finished. Press Q to quit!", colors.RED)
         else:
@@ -75,13 +73,13 @@ class Game:
             self._adjust_speed(+1)
         
         # game state
-        if self._control.pause() and not self._stopped:
-            self._paused = not self._paused
-            if self._paused:
+        if self._control.pause() and not self._has_stopped:
+            self._is_paused = not self._is_paused
+            if self._is_paused:
                 self._set_message("Press PAUSE key to continue.", colors.BLUE)
             else:
-                self._started = True
-                self._set_message()
+                self._was_started = True
+                self._set_message("Press PAUSE key to pause.", colors.BLUE)
         
         if self._control.quit():
             print("Quitting...")
@@ -99,11 +97,7 @@ class Game:
         if self._control.rotate():
             self._figure.rotate()
     
-    def _advance(self):
-        # force step down
-        self._figure.step_down()
-        
-        # resolve lines
+    def _resolve_lines(self):
         lines = self._field.resolve_lines()
         if lines:
             self._score.add_lines(lines)
@@ -111,12 +105,12 @@ class Game:
             # increase game speed
             self._stepover = max(self._stepover - 1, 1)
             print("[DEBUG] game_stepover = " + str(self._stepover))
-        
-        # spawn new figure
+    
+    def _spawn_new_figure(self):
         if self._figure.is_freezed():
             self._figure = self._next_figure
             if self._field.collides(self._figure):
-                self._stopped = True
+                self._has_stopped = True
                 self._display_score()
             else:
                 self._next_figure = next(self._figure_factory)
@@ -126,8 +120,8 @@ class Game:
         self._screen.blit(self._background, (0, 0))
         self._field.draw_grid()
 
-        if self._started:
-            if not self._stopped:
+        if self._was_started:
+            if not self._has_stopped:
                 self._field.draw_figure(self._figure)
             else:
                 # hack in some flickering
@@ -147,16 +141,19 @@ class Game:
             self._control.process_events()
             self._check_states()
             
-            if not self._paused and not self._stopped:
+            if not self._is_paused and not self._has_stopped:
                 self._move_figure()
 
                 self._nostep =  (self._nostep + 1) % self._stepover
                 if not self._nostep:
-                    self._advance()
+                    # advance game
+                    self._figure.step_down()
+                    self._resolve_lines()
+                    self._spawn_new_figure()
             
             self._draw()
         
-        if not self._stopped:
+        if not self._has_stopped:
             print(self._score.get_final_score())
         
         pygame.quit()
