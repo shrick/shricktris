@@ -2,6 +2,8 @@
 
 import pygame
 from field import GameField
+from preview import Preview
+from brick import Brick
 from figure import generate_randomized_figures as FigureFactory
 from control import Control
 from score import Score
@@ -28,7 +30,10 @@ class Game:
         self._set_message("Press PAUSE key to start!", colors.GREEN)
 
         # init game components
-        self._field = GameField(self._screen, GRID_COLUMNS, GRID_ROWS, 20)
+        rect_pixel_length = 20
+        self._field = GameField(self._screen, GRID_COLUMNS, GRID_ROWS, rect_pixel_length)
+        self._preview = Preview(self._screen, SCREEN_RESOLUTION[0] - 100, 20,
+            Brick.DIMENSION, int(rect_pixel_length / 2))
         self._figure_factory = FigureFactory(self._field)
         self._figure = next(self._figure_factory)
         self._next_figure = next(self._figure_factory)
@@ -123,6 +128,7 @@ class Game:
         if self._was_started:
             if not self._has_stopped:
                 self._field.draw_figure(self._figure)
+                self._preview.draw_figure(self._next_figure)
             else:
                 # hack in some flickering
                 self._nostep =  (self._nostep + 1) % 3

@@ -34,6 +34,10 @@ class Figure:
     def get_xy_coordinates(self):
         return ((int(self._x + (p %  self._brick.DIMENSION)), int(self._y + (p / self._brick.DIMENSION)))
             for p in self._brick.get_points())
+
+    def get_plain_coordinates(self):
+        return ((int(p %  self._brick.DIMENSION), int(p / self._brick.DIMENSION))
+            for p in self._brick.get_points())
     
     def _step(self, dx=0, dy=0):
         """return if step was actually done (no collosion detected)"""

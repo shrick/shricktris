@@ -1,7 +1,9 @@
 # field.py
 
+
 import pygame
 from colors import COLORS
+
 
 # simple wrapper for rect/color pairs
 class _ColoredRectangle:
