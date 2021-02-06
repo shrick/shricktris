@@ -13,3 +13,4 @@ Simple Tetris clone in Python with Pygame. Inspired by a [Morpheus Tutorial](htt
 - [ ] Allow restart
 - [ ] Allow configuration (grid size etc)
 - [ ] Scale game field with window size
+- [ ] Some hinting (highlight currently affected columns)
